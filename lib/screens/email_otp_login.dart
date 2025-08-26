@@ -1,44 +1,67 @@
-import 'dart:math';
 import 'package:flutter/material.dart';
-import 'test_screen.dart'; // Make sure this exists
+import 'package:firebase_auth/firebase_auth.dart';
 
-class EmailOTPLogin extends StatefulWidget {
-  const EmailOTPLogin({super.key});
+class EmailOtpScreen extends StatefulWidget {
+  const EmailOtpScreen({Key? key}) : super(key: key);
 
   @override
-  State<EmailOTPLogin> createState() => _EmailOTPLoginState();
+  State<EmailOtpScreen> createState() => _EmailOtpScreenState();
 }
 
-class _EmailOTPLoginState extends State<EmailOTPLogin> {
-  final TextEditingController emailController = TextEditingController();
-  final TextEditingController otpController = TextEditingController();
-  String? generatedOTP;
-  bool otpSent = false;
+class _EmailOtpScreenState extends State<EmailOtpScreen> {
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _otpController = TextEditingController();
 
-  void sendOTP() {
-    generatedOTP = (Random().nextInt(900000) + 100000).toString();
-    setState(() {
-      otpSent = true;
-    });
-    print("OTP for ${emailController.text}: $generatedOTP");
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("OTP sent to your email (mock)")),
-    );
+  String? _verificationId;
+  bool _codeSent = false;
+  String _message = "";
+
+  Future<void> _sendOtp() async {
+    try {
+      // This actually sends a sign-in link (Firebase email OTP way)
+      await _auth.sendSignInLinkToEmail(
+        email: _emailController.text.trim(),
+        actionCodeSettings: ActionCodeSettings(
+          url:
+              "https://your-app.firebaseapp.com", // Change to your Firebase URL
+          handleCodeInApp: true,
+          iOSBundleId: "com.example.myApp",
+          androidPackageName: "com.example.my_app",
+          androidInstallApp: true,
+          androidMinimumVersion: "21",
+        ),
+      );
+      setState(() {
+        _message = "OTP (link) sent! Check your email.";
+      });
+    } catch (e) {
+      setState(() {
+        _message = "Error: $e";
+      });
+    }
   }
 
-  void verifyOTP() {
-    if (otpController.text == generatedOTP) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text("✅ Login Successful")));
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const TestScreen()),
-      );
-    } else {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text("❌ Invalid OTP")));
+  Future<void> _verifyOtp() async {
+    try {
+      final emailLink = _otpController.text.trim(); // Paste link from email
+      if (_auth.isSignInWithEmailLink(emailLink)) {
+        await _auth.signInWithEmailLink(
+          email: _emailController.text.trim(),
+          emailLink: emailLink,
+        );
+        setState(() {
+          _message = "✅ Login successful!";
+        });
+      } else {
+        setState(() {
+          _message = "Invalid link/OTP.";
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _message = "Error: $e";
+      });
     }
   }
 
@@ -51,25 +74,25 @@ class _EmailOTPLoginState extends State<EmailOTPLogin> {
         child: Column(
           children: [
             TextField(
-              controller: emailController,
-              decoration: const InputDecoration(labelText: "Email Address"),
-              keyboardType: TextInputType.emailAddress,
+              controller: _emailController,
+              decoration: const InputDecoration(labelText: "Enter Email"),
             ),
             const SizedBox(height: 10),
-            ElevatedButton(onPressed: sendOTP, child: const Text("Send OTP")),
-            if (otpSent) ...[
-              const SizedBox(height: 20),
-              TextField(
-                controller: otpController,
-                decoration: const InputDecoration(labelText: "Enter OTP"),
-                keyboardType: TextInputType.number,
+            ElevatedButton(onPressed: _sendOtp, child: const Text("Send OTP")),
+            const SizedBox(height: 20),
+            TextField(
+              controller: _otpController,
+              decoration: const InputDecoration(
+                labelText: "Paste OTP Link from Email",
               ),
-              const SizedBox(height: 10),
-              ElevatedButton(
-                onPressed: verifyOTP,
-                child: const Text("Verify OTP"),
-              ),
-            ],
+            ),
+            const SizedBox(height: 10),
+            ElevatedButton(
+              onPressed: _verifyOtp,
+              child: const Text("Verify OTP"),
+            ),
+            const SizedBox(height: 20),
+            Text(_message, style: const TextStyle(color: Colors.red)),
           ],
         ),
       ),
