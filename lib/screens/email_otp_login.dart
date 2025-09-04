@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 class EmailOtpScreen extends StatefulWidget {
-  const EmailOtpScreen({Key? key}) : super(key: key);
+  const EmailOtpScreen({super.key});
 
   @override
   State<EmailOtpScreen> createState() => _EmailOtpScreenState();
@@ -13,8 +13,6 @@ class _EmailOtpScreenState extends State<EmailOtpScreen> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _otpController = TextEditingController();
 
-  String? _verificationId;
-  bool _codeSent = false;
   String _message = "";
 
   Future<void> _sendOtp() async {
